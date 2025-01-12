@@ -124,13 +124,15 @@ class SyntheticDemand:
                 plt.title('Trip Destination Distribution')
 
     def draw_samples(self, PDF, nr_samples, plt_opt):
-
+        print(PDF)
         if PDF.size != self.coordinates.__len__():
             # prob = [PDF[x,y] for x in range(PDF.shape[0]) for y in range(PDF.shape[1])]
             prob = np.reshape(PDF, (-1,))  # Flatten the PDF
         else:
-            prob = PDF
+            prob = np.reshape(PDF, (-1,))  # Flatten the PDF
             PDF = np.reshape(prob, (int(np.sqrt(len(prob))), int(np.sqrt(len(prob)))))
+
+        print("PROB", prob.shape)
 
         sample_indices = np.random.choice(np.arange(len(prob)), nr_samples, p=prob)
         samples = [self.coordinates[k] for k in sample_indices]
@@ -266,8 +268,9 @@ class SyntheticNetwork:
         N = self.nr_regions
         B = float(self.nr_bikes)
 
-        r = np.random.randint(0, max(1, int(B / 2)), size=(N, 1))
-        x_0 = np.round((r * B) / np.sum(r)) if np.sum(r) > 0 else np.zeros((N, 1))
+        r = np.random.randint(0, max(1, int(B / 2)), size=(N))
+
+        x_0 = np.round((r * B) / np.sum(r)) if np.sum(r) > 0 else np.zeros((N))
         x_0 = np.minimum(x_0, self.C_s).astype(int)
 
         while int(np.sum(x_0)) > self.nr_bikes:
@@ -342,6 +345,7 @@ class SyntheticNetwork:
                 Demand.create_prob_distribution("D", False)
 
                 n = max(int(np.random.normal(0.15 * self.nr_bikes, 0.075 * self.nr_bikes)), 0)
+                print("NR_bikes", Demand.Trip_Origin_PDF)
                 origin_samples, ox, oy = Demand.draw_samples(Demand.Trip_Origin_PDF, n, False)
 
                 Trips = Demand.generate_trips(origin_samples, False)

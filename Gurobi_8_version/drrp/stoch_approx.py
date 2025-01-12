@@ -116,7 +116,7 @@ class SAModel(object):
                 df_entry = {'N': np.rint(N), 'V': np.rint(V), 'T': np.rint(T), 'Inst.': np.rint(i),
                             'k': np.rint(k), 'Integer': 0,
                             't1': np.round(ts1, 6), 't2': np.round(ts2, 6)}
-            self.results_df = self.results_df.append(df_entry, ignore_index=True)
+            self.results_df = self.results_df._append(df_entry, ignore_index=True)
             if not self.alg_params['random_s1'] or (self.alg_params['random_s1'] and
                                                     divmod(k, 10)[1] == 0):
                 self.results_df.to_csv('output/stats_N%d_V%d_T%d_i%d' % (N, V, T, i) +
@@ -134,7 +134,7 @@ class SAModel(object):
                         'k': n_iter+1, 'Integer': final_method, 't1': np.round(final_ts1, 6),
                         'Cost': np.round(final_ub['cost'], 6),
                         'SR': np.round(final_stats['sr'] * 100, 6)}
-            self.results_df = self.results_df.append(df_entry, ignore_index=True)
+            self.results_df = self.results_df._append(df_entry, ignore_index=True)
             self.results_df['N'] = self.results_df['N'].map(lambda x: "%d" % x)
             self.results_df['V'] = self.results_df['V'].map(lambda x: "%d" % x)
             self.results_df['T'] = self.results_df['T'].map(lambda x: "%d" % x)
@@ -201,7 +201,7 @@ class SAModel(object):
                     'k': n_iter+1, 'Integer': sol_method, 't1': np.round(final_ts1, 6),
                     'Cost': np.round(final_ub['cost'], 6),
                     'SR': np.round(final_stats['sr'] * 100, 6)}
-        self.results_df = self.results_df.append(df_entry, ignore_index=True)
+        self.results_df = self.results_df._append(df_entry, ignore_index=True)
         self.results_df['N'] = self.results_df['N'].map(lambda x: "%d" % x)
         self.results_df['V'] = self.results_df['V'].map(lambda x: "%d" % x)
         self.results_df['T'] = self.results_df['T'].map(lambda x: "%d" % x)
@@ -361,24 +361,24 @@ class SAModel(object):
         st_dyns = []  # Station fill level dynamics
         for t in range(1, T + 1):
             for n in range(N):
-                st_dyns.append(m.addConstr(name='st_dyn_%d_%d' % (t, n),
+                st_dyns.append(m.addLConstr(name='st_dyn_%d_%d' % (t, n),
                                            lhs=0, rhs=0, sense=gu.GRB.EQUAL))
 
         flow_dyns = []  # Bike-on-vehicle flow conservation
         b_flow_caps = []  # Bike-on-vehicle flow limits
         for t in range(1, T + 1):
             for i in range(N):
-                flow_dyns.append(m.addConstr(name='flow_dyns_%d_%d' % (t, i),
+                flow_dyns.append(m.addLConstr(name='flow_dyns_%d_%d' % (t, i),
                                              lhs=0, rhs=0, sense=gu.GRB.EQUAL))
                 for j in range(N):
-                    b_flow_caps.append(m.addConstr(name='flow_cap_%d_%d_%d' % (t, i, j),
+                    b_flow_caps.append(m.addLConstr(name='flow_cap_%d_%d_%d' % (t, i, j),
                                                    lhs=0, rhs=0, sense=gu.GRB.LESS_EQUAL))
 
         z_dyns = []  # Truck movement consistency constraints
         # vehicle_flow_lbs = []  # Vehicle consistency (redundant)
         for t in range(1, T + 1):
             for n in range(N):
-                z_dyns.append(m.addConstr(name='z_dyn_%d_%d' % (t, n), lhs=0, rhs=0,
+                z_dyns.append(m.addLConstr(name='z_dyn_%d_%d' % (t, n), lhs=0, rhs=0,
                                           sense=gu.GRB.EQUAL))
             # vehicle_flow_lbs.append(m.addConstr(name='vfl_%d' % t, lhs=0, rhs=V,
             #                                     sense=gu.GRB.EQUAL))
@@ -389,7 +389,7 @@ class SAModel(object):
         for t in range(1, T + 1):
             for n in range(N):
                 for l in range(lb, ub):
-                    vfs.append(m.addConstr(name='vf_%d_%d_%d' % (t, n, l), lhs=0, rhs=0,
+                    vfs.append(m.addLConstr(name='vf_%d_%d_%d' % (t, n, l), lhs=0, rhs=0,
                                            sense=gu.GRB.LESS_EQUAL))
         n_vf = ub - lb  # Number of segments in each station's second stage VF
 
@@ -512,7 +512,7 @@ class SAModel(object):
         st_dyns = []  # Station fill level dynamics
         for t in range(1, T + 1):
             for n in range(N):
-                st_dyns.append(m.addConstr(name='st_dyn_%d_%d' % (t, n),
+                st_dyns.append(m.addLConstr(name='st_dyn_%d_%d' % (t, n),
                                            lhs=0, rhs=0, sense=gu.GRB.EQUAL))
 
         wd_constrs = []  # Constraints that limit customer movements to available capacity
@@ -520,7 +520,7 @@ class SAModel(object):
             for i in range(N):
                 for j in range(N):
                     for k in range(K + 1):
-                        wd_constrs.append(m.addConstr(name='wd_%d_%d_%d_%d' % (t, i, j, k),
+                        wd_constrs.append(m.addLConstr(name='wd_%d_%d_%d_%d' % (t, i, j, k),
                                                       lhs=0, rhs=0, sense=gu.GRB.LESS_EQUAL))
         # Index of time t+1, origin i, destination j, lag k: (tN^2(K+1) + iN(K+1) + j(K + 1) + k)
 
@@ -528,7 +528,7 @@ class SAModel(object):
         for t in range(1, T + 1):
             for n in range(N):
                 for k in range(K):
-                    q_constrs.append(m.addConstr(name='q_constr_%d_%d_%d' % (t, n, k + 1),
+                    q_constrs.append(m.addLConstr(name='q_constr_%d_%d_%d' % (t, n, k + 1),
                                                  lhs=0, rhs=0, sense=gu.GRB.EQUAL))
         # Index of time t+1, station n, lag k: (tNK + nK + (k-1))
 
@@ -536,7 +536,7 @@ class SAModel(object):
         nzx = N + (N * K)
         for t in range(1, T + 1):
             for c in range(nzx):
-                zx_constrs.append(m.addConstr(name='zx_constr_%d_%d' % (t, c), lhs=0, rhs=0,
+                zx_constrs.append(m.addLConstr(name='zx_constr_%d_%d' % (t, c), lhs=0, rhs=0,
                                               sense=gu.GRB.EQUAL))
 
         m.update()
@@ -753,7 +753,7 @@ class SAModel(object):
         df_entry = {'N': np.rint(N), 'V': np.rint(V), 'T': np.rint(T), 'Inst.': np.rint(i), 'k': 0,
                     'Cost': np.round(self.ub_no_action['cost'], 6),
                     'SR': np.round(self.stats_no_action['sr'] * 100, 6)}
-        self.results_df = self.results_df.append(df_entry, ignore_index=True)
+        self.results_df = self.results_df._append(df_entry, ignore_index=True)
         self.results_df.to_csv('output/stats_N%d_V%d_T%d_i%d' % (N, V, T, i) +
                                self.results_label + '.csv')
 
@@ -939,7 +939,7 @@ class SAModel(object):
             m.update()
             qe += 0.5 * x[-1] * x[-1]
             if i > -self.alg_params['max_dev']:
-                m.addConstr(x[-1] - x[-2], constr_sense, 0)
+                m.addLConstr(x[-1] - x[-2], constr_sense, 0)
         m.setObjective(qe)
         return m, x
 
