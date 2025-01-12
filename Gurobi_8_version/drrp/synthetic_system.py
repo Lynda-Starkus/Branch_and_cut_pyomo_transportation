@@ -58,7 +58,7 @@ class SyntheticDemand:
             y = np.random.randint(0, self.Grid_dim)
             self.Destinations.append(np.array([x, y]))
 
-    def create_prob_distribution(self, c, plt_opt):
+    def create_prob_distribution(self, c, plt_opt=False):
         if c == "O":
             centres = copy.copy(self.Origins)
         elif c == "D":
@@ -122,6 +122,7 @@ class SyntheticDemand:
                 plt.figure()
                 plt.contourf(self.Grid[:, :, 0], self.Grid[:, :, 1], pdf_cum)
                 plt.title('Trip Destination Distribution')
+                plt.show()
 
     def draw_samples(self, PDF, nr_samples, plt_opt):
         print(PDF)
@@ -154,10 +155,11 @@ class SyntheticDemand:
             plt.figure()
             plt.contourf(self.Grid[:, :, 0], self.Grid[:, :, 1], PDF)
             plt.plot(samples_x, samples_y, 'o')
+            plt.show()
 
         return samples, samples_x, samples_y
 
-    def generate_trips(self, samples, plt_opt):
+    def generate_trips(self, samples, plt_opt=False):
 
         Dest_PDF = copy.copy(self.Trip_Destination_PDF)
         # prob = [Dest_PDF[x,y] for x in range(Dest_PDF.shape[0]) for y in range(Dest_PDF.shape[1])]
@@ -192,6 +194,7 @@ class SyntheticDemand:
 
                 plt.arrow(x, y, dx, dy, width=0.1, head_width=2)
                 plt.plot(x, y, 'o', c='black')
+                plt.show()
         return Trips
 
 
