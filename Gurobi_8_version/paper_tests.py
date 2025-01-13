@@ -116,7 +116,10 @@ def main():
                     s.eval_no_action_cost()
                     s.approx()
                     # Uncomment the following line if you wish to run the integer-only method
-                    # s.integer_only()
+                    #s.integer_only()
+                    s.plot_vf_evolution()
+                    s.plot_cost_estimates()
+
 
                 except Exception as e:
                     print(f"An error occurred while processing {filename}: {e}")

@@ -91,7 +91,7 @@ class SAModel(object):
                 s1_cost, cost_to_go, s1_sol, ts1 = self.optimize_stage(stage=1)
                 s1_really_solved = True
             self.last_x1_sol = s1_sol
-            # self.print_s1_solution(s1_sol)
+            self.print_s1_solution(s1_sol)
             # 2. Update initial conditions of S2 model
             self.set_s2_constr_rhs(s1_sol, really_solved_s1=s1_really_solved)
             # 3. Evaluate lower and upper bounds
@@ -103,8 +103,11 @@ class SAModel(object):
             # 4. Optimize journeys given xk, and return objective function value and multipliers
             self.resample_s2_demand(deterministic=nominal_s2)
             s2_cost, s2_sol, s2_lambdas, ts2 = self.optimize_stage(stage=2)
+
             # 5. Update value function using step size rule
             self.update_vf(s1_sol, s2_lambdas, k, verify=False)
+            print("PRINTING S2 SOLUTIONS")
+            self.print_s2_solution(s2_lambdas)
             # 6. Log results for this iteration
             if eval_this_iteration:
                 df_entry = {'N': np.rint(N), 'V': np.rint(V), 'T': np.rint(T), 'Inst.': np.rint(i),
@@ -240,7 +243,9 @@ class SAModel(object):
             # Jointly optimize all actions exactly
             self.unrelax_s1()
             s1_cost, cost_to_go, s1_sol, ts1 = self.optimize_stage(stage=1)
+            self.print_rebalancing_decisions(s1_sol)
             print("  Exact S1 cost: %.3f" % (s1_cost - cost_to_go))
+            
             # self.unrelax_s1(relax_or_unrelax='relax')  # 'Re-relax' model
         else:
             print("Unrecognised method for final S1 solution: " + method + ". Exiting.")
@@ -248,6 +253,53 @@ class SAModel(object):
         self.set_s2_constr_rhs(s1_sol, really_solved_s1=True)
         ub, stats = self.estimate_costs(s1_cost - cost_to_go, deterministic_s2=False)
         return ts1, ub, stats
+    
+    def print_rebalancing_decisions(self, opt_vec):
+        """
+        Print the rebalancing decisions from the solution vector.
+        :param opt_vec: The optimized decision variable vector from Stage 1
+        """
+        N, T = self.nw.nr_regions, self.T
+
+        opt_vec_series = [opt_vec[(t * self.vstage_s1):(t+1) * self.vstage_s1] for t in range(T)]
+        print("\nRebalancing Decisions:")
+
+        # Vehicle movements (`z_{i,j,t}`)
+        print("Vehicle Movements (z_{i,j,t}):")
+        z_index = N + (N * N)
+        for t, vec in enumerate(opt_vec_series, start=1):
+            for i in range(N):
+                for j in range(N):
+                    if i != j:
+                        flow = vec[z_index + i * N + j]
+                        if flow > 0:
+                            print(f"  t = {t}, move {int(flow)} vehicles from station {i} to {j}")
+
+        # Bike flows (`dv_{i,j,t}`)
+        print("\nBike Flows (dv_{i,j,t}):")
+        dv_index = N
+        for t, vec in enumerate(opt_vec_series, start=1):
+            for i in range(N):
+                for j in range(N):
+                    if i != j:
+                        flow = vec[dv_index + i * N + j]
+                        if flow > 1e-4:  # Threshold to avoid floating-point noise
+                            print(f"  t = {t}, move {int(flow)} bikes from station {i} to {j}")
+
+        # Bike loading/unloading (`y_{i,t}^+`, `y_{i,t}^-`)
+        print("\nBike Loading/Unloading (y_{i,t}^+, y_{i,t}^-):")
+        y_index = N + (N * N) + (N * N)
+        for t, vec in enumerate(opt_vec_series, start=1):
+            for i in range(N):
+                y_plus = vec[y_index + 2 * i]
+                y_minus = vec[y_index + 2 * i + 1]
+                if y_plus > 0:
+                    print(f"  t = {t}, load {int(y_plus)} bikes at station {i}")
+                if y_minus > 0:
+                    print(f"  t = {t}, unload {int(y_minus)} bikes at station {i}")
+
+        print("\nEnd of Rebalancing Decisions.\n")
+
 
     def update_vf(self, s1_sol_in, lambdas_in, k, verify=False):
         # Generate gradient from lambdas and S1 solution
@@ -893,6 +945,35 @@ class SAModel(object):
         else:
             print("Unrecognised step size rule: " + self.alg_params['ss_rule'])
             raise SystemExit()
+        
+    def visualize_station_states(self, nw):
+        """Visualize initial bikes and future demand at each station."""
+        initial_bikes = nw.ds_0
+        num_stations = len(initial_bikes)
+
+        # Calculate total future demand for each station
+        future_demand = np.sum(np.sum(nw.F, axis=0), axis=1)  # Sum over time and destinations
+
+        # Plotting
+        x = np.arange(num_stations)  # Station indices
+        width = 0.35  # Bar width
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.bar(x - width/2, initial_bikes, width, label='Initial Bikes')
+        ax.bar(x + width/2, future_demand, width, label='Future Demand')
+
+        # Add labels, legend, and title
+        ax.set_xlabel('Station')
+        ax.set_ylabel('Count')
+        ax.set_title('Initial Bikes and Future Demand at Each Station')
+        ax.set_xticks(x)
+        ax.set_xticklabels([f'Station {i}' for i in range(num_stations)])
+        ax.legend()
+
+        # Display the plot
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
 
     def project_vf(self, vf_in):
         assert len(vf_in.shape) == 3, "Value function array is %d-dimensional!" % len(vf_in.shape)
@@ -1258,7 +1339,6 @@ class SAModel(object):
         stats_dict['Fulfilled demand'], stats_dict['Unfulfilled demand'] = f_sum, uf_sum
         stats_dict['Service rate'] = 100.0 * float(f_sum) / float(f_sum + uf_sum)
         stats_dict['Fulfilled value'], stats_dict['Unfulfilled value'] = f_value, uf_value
-
         return stats_dict
 
     def plot_cost_estimates(self, suffix=''):

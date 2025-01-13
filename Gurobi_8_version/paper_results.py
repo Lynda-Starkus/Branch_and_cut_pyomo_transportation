@@ -106,7 +106,7 @@ def process_suffix(suffix: str, output_dir: str = 'output'):
     else:
         mean_std_df.round(6).to_csv(os.path.join(output_dir, f'mean_std_stats{suffix}.csv'))
 
-    save_plots = False  # Set to True to enable plot saving
+    save_plots = True  # Set to True to enable plot saving
     if save_plots:
         for (N, V), sub_df in mean_std_df.groupby(['N', 'V']):
             try:
@@ -152,7 +152,7 @@ def process_suffix(suffix: str, output_dir: str = 'output'):
                 filename_cost = os.path.join(output_dir, f'cost_stats_{N}_{V}{suffix}.pdf')
                 plt.tight_layout()
                 plt.savefig(filename_cost)
-                plt.close()
+                plt.show()
             except Exception as e:
                 print(f"Failed to generate graphs for N={N}, V={V}, suffix={suffix}: {e}")
                 continue
